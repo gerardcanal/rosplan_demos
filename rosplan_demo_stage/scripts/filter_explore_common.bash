@@ -1,4 +1,9 @@
 #!/bin/bash
+sleep 5
+
+rosservice call /rosplan_roadmap_server/create_prm "{nr_waypoints: 1000, min_distance: 1.2, casting_distance: 2.4, connecting_distance: 4.8, occupancy_threshold: 50, total_attempts: 100000}"
+
+rosservice call /roadmap_filter/filter_waypoints
 
 # add robot kenny instance + goals: visit all waypoint instances
 echo "Adding initial state and goals to knowledge base.";
@@ -21,7 +26,7 @@ param="$param
   - {key: 'r', value: 'kenny'}
   - {key: 'wp', value: 'wp0'}
   function_value: 0.0";
-for i in $(seq 1 $(( $(rosservice call /rosplan_knowledge_base/state/instances "type_name: 'waypoint'" | sed 's/wp/\n/g' | wc -l) - 2)) )
+for i in $(seq 1 $(( $(rosservice call /rosplan_knowledge_base/state/instances "type_name: 'waypoint'" | sed 's/wp//g' | wc -l) - 2)) )
 do
 param_type="$param_type
 - 1"
