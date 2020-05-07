@@ -2,19 +2,22 @@
 <launch>
 
     <!-- Important Experiment Arguments -->
-    <arg name="approach"         default="0" />
-    <arg name="max_sample_size"  default="50" />
-    <arg name="max_prm_size"     default="1000" />
-    <arg name="rviz"             default="true" />
-    <arg name="objects_file"     default="$(find hidden_costs_generator)/object_config/simple_house_30doughnuts_variant00.yaml" />
-    <arg name="hppit_file"       default="$(find hidden_costs_generator)/maps/objects-empty.yaml" />
-    <arg name="initial_state"    default="$(find hidden_costs_generator)/pddl_problems/problem_1goal_simple_house_30doughnuts_variant00.yaml.pddl" />
+    <arg name="approach"             default="0" />
+    <arg name="max_sample_size"      default="50" />
+    <arg name="max_prm_size"         default="1000" />
+    <arg name="rviz"                 default="true" />
+    <arg name="objects_file"         default="$(find hidden_costs_generator)/object_config/simple_house_30doughnuts_variant00.yaml" />
+    <arg name="hppit_file"           default="$(find hidden_costs_generator)/maps/objects-empty.yaml" />
+    <arg name="initial_state"        default="$(find hidden_costs_generator)/pddl_problems/problem_1goal_simple_house_30doughnuts_variant00.yaml.pddl" />
+    <arg name="stage_map"            default="lt13"/> <!-- lt13 or simple_house -->
+    <arg name="total_time_limit"     default="300"/> <!-- seconds -->
+    <arg name="planning_time_limit"  default="10.0"/> <!-- seconds -->
 
     <param name="/use_sim_time" value="$(arg rviz)"/>
 
     <!-- Arguments -->
     <arg name="model" default="waffle" doc="model type [burger, waffle, waffle_pi]"/>
-    <arg name="map_file" default="$(find rosplan_stage_demo)/maps/simple_house.yaml"/>
+    <arg name="map_file" default="$(find rosplan_stage_demo)/maps/$(arg stage_map).yaml"/>
     <arg name="common_param_file" default="$(find rosplan_stage_demo)/config/costmap_common_params_waffle.yaml"/>
     <arg name="local_param_file" default="$(find rosplan_stage_demo)/config/local_costmap_params.yaml"/>
     <arg name="global_param_file" default="$(find rosplan_stage_demo)/config/global_costmap_params.yaml"/>
@@ -26,8 +29,10 @@
     <!-- AMCL -->
     <include file="$(find turtlebot3_navigation)/launch/amcl.launch">
         <arg name="scan_topic" value="base_scan" />
-        <arg name="initial_pose_x" value="6.525"/>
-        <arg name="initial_pose_y" value="5.375"/>
+        <arg name="initial_pose_x" value="13.40" if="$(eval arg('stage_map')=='lt13')"/>
+        <arg name="initial_pose_x" value="6.525" if="$(eval arg('stage_map')=='simple_house')"/>
+        <arg name="initial_pose_y" value="36.32" if="$(eval arg('stage_map')=='lt13')"/>
+        <arg name="initial_pose_y" value="5.375" if="$(eval arg('stage_map')=='simple_house')"/>
         <arg name="initial_pose_a" value="0.000"/>
     </include>
 
@@ -118,12 +123,12 @@
         <node name="rviz" pkg="rviz" type="rviz" args="-d $(find rosplan_stage_waypoint_demo)/config/waypoint_sampling.rviz" />
 
         <!-- rosplan move base action interface, makes link between rosplan dispatcher and hardware -->
-        <node pkg="stage_ros" type="stageros" name="stageros" args="$(find rosplan_stage_demo)/world/simple_house.world" respawn="false" output="log"/>
+        <node pkg="stage_ros" type="stageros" name="stageros" args="$(find rosplan_stage_demo)/world/$(arg stage_map).world" respawn="false" output="log"/>
     </group>
 
     <!-- main coordinator -->
     <!-- 0: sampling, 1: PRM, 2: Fixed WPs -->
-    <node pkg="rosplan_stage_waypoint_demo" type="main_executor.py" name="coordinator" respawn="false" required="false" output="screen">
+    <node pkg="rosplan_stage_waypoint_demo" type="main_executor.py" name="coordinator" respawn="false" required="true" output="screen">
         <param name="wait_for_rviz"          value="$(arg rviz)" />
         <param name="max_sample_size"        value="$(arg max_sample_size)" />
         <param name="max_prm_size"           value="$(arg max_prm_size)" />
@@ -134,6 +139,9 @@
         <param name="initial_state"          value="$(arg initial_state)" />
         <param name="planner_command"        value="timeout 10 $(find rosplan_planning_system)/common/bin/popf DOMAIN PROBLEM" />
         <param name="approach"               value="$(arg approach)" />
+        <param name="approach"               value="$(arg approach)" />
+        <param name="planning_time_limit"    value="$(arg planning_time_limit)" />
+        <param name="total_time_limit"       value="$(arg total_time_limit)" />
     </node>
 
 
