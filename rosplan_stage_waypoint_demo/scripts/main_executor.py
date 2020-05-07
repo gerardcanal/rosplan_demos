@@ -32,6 +32,8 @@ data_path = rospy.get_param('~data_path', "")
 initial_state = rospy.get_param('~initial_state', "param_not_set")
 results_path = rospy.get_param('~results_path', "results.csv")
 planner_command = rospy.get_param('~planner_command', "")
+time_limit = rospy.get_param('~total_time_limit', 300)  # in seconds?
+planning_time_limit = rospy.get_param('~planning_time_limit', 10.0)  # in seconds?
 
 # wait for services
 rospy.wait_for_service('/rosplan_roadmap_server/create_prm')
@@ -174,7 +176,9 @@ def plan_cost():
     incurred_cost = time_at_wp * current_wp_cost
     total_cost = total_cost + incurred_cost
     print "increasing cost by: " + str(time_at_wp) + " * " + str(current_wp_cost) + " = " +  str(incurred_cost) 
+    return (plan, plan_duration, total_distance, total_cost)
 
+def write_plan(plan_duration, total_distance, total_cost):
     try:
         f = open(results_path, "a")
         f.write(str(approach)+","+os.path.basename(initial_state)+","+str(plan_duration)+","+str(total_distance)+","+str(planning_time)+","+str(total_cost)+"\n")
@@ -192,6 +196,13 @@ def plan_failed():
     finally:
         f.close()
 
+
+def finished(start_time, sample_count, max_sample_size):
+    if approach == 0:
+        return (rospy.Time.now()-start_time) > rospy.Duration(time_limit) # sample_count > max_sample_size
+    return sample_count > max_sample_size
+
+
 ### EXPERIMENT ###
 try:
     rospy.sleep(1)
@@ -204,7 +215,7 @@ try:
 
             plan_found = generate_problem_and_plan()
             if not plan_found:
-                if planning_time>=10.00:
+                if planning_time>=planning_time_limit:
                     # timeout, stop here
                     sample_count = max_prm_size
                 else:
@@ -231,7 +242,9 @@ try:
         if approach==2:
             max_sample_size = sample_count + 1
 
-        while sample_count < max_sample_size:
+        start = rospy.Time.now()
+        best_vals = ([], 0, 0, float('inf')) # (plan, plan_duration, total_distance, cost)
+        while not finished(start, sample_count, max_sample_size):
 
             rospy.loginfo("KCL: (%s) Sampling %i waypoints" % (rospy.get_name(), sample_count))
             smp = rospy.ServiceProxy('/waypoint_sampler/sample_waypoints', SetInt)        
@@ -245,9 +258,10 @@ try:
             plan_found = generate_problem_and_plan()
 
             if not plan_found:
-                if planning_time>=10.00 and approach==0:
+                if planning_time>=planning_time_limit and approach==0:
                     if resamples>4:
-                        break
+                        #break
+                        pass
                     # timeout, decrease sample size
                     sample_count -= 4
                     if sample_count < 8:
@@ -260,10 +274,17 @@ try:
                 while not rospy.is_shutdown() and not plan_recieved:
                     rospy.loginfo("KCL: (%s) Plan not received, waiting..." % rospy.get_name())
                     rospy.sleep(0.5)
-                plan_cost()
-                break
-        if not plan_found:
+                res = plan_cost()
+                if res[3] < best_vals[3] and not finished():
+                    best_vals = res
+                #break
+        if not best_vals[0]:
             plan_failed()
+        else:
+            rospy.loginfo("KCL: (%s) After %f seconds: duration %f, distance %f, cost %f" % (rospy.get_name(), time_limit, best_vals[1], best_vals[2], best_vals[3]))
+            write_plan(best_vals[1], best_vals[2], best_vals[3]) # plan_duration, total_distance, total_cost
+        rospy.loginfo("KCL: (%s) Total time: %f minutes" % (rospy.get_name(), (rospy.Time.now()-start).to_sec()/60.0))
+        rospy.loginfo("KCL: (%s) Time limit: %f minutes" % (rospy.get_name(), (time_limit/60.0)))
 
 except rospy.ServiceException, e:
     rospy.logerr("KCL: (%s) Service call failed: %s" % (rospy.get_name(), e))
