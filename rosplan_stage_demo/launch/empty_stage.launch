@@ -5,8 +5,10 @@
 
     <!-- Arguments -->
     <arg name="model" default="waffle" doc="model type [burger, waffle, waffle_pi]"/>
-    <arg name="map_file" default="$(find rosplan_stage_demo)/maps/simple_house.yaml"/>
-    <arg name="world_file" default="$(find rosplan_stage_demo)/world/simple_house.world"/>
+    <!--<arg name="map_file" default="$(find rosplan_stage_demo)/maps/simple_house.yaml"/>-->
+    <arg name="map_file" default="/home/gerard/Dropbox/hsr_maps/bh7_map/map.yaml"/>
+    <arg name="world_file" default="$(find rosplan_stage_demo)/world/bh7.world"/>
+    <!--<arg name="world_file" default="$(find rosplan_stage_demo)/world/simple_house.world"/>-->
     <arg name="common_param_file" default="$(find rosplan_stage_demo)/config/costmap_common_params_waffle.yaml"/>
     <arg name="local_param_file" default="$(find rosplan_stage_demo)/config/local_costmap_params.yaml"/>
     <arg name="global_param_file" default="$(find rosplan_stage_demo)/config/global_costmap_params.yaml"/>
